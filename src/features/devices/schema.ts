@@ -18,31 +18,32 @@ const CameraConfigSchema = z.object({
   motionDetection: z.boolean(),
 });
 
+const deviceIdSchema = z.string().trim().min(1).max(100);
+const modelSchema = z.string().trim().min(1).max(100);
+
 export const CreateDeviceSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('light'),
-    name: z.string().min(1),
-    location: z.string().min(1),
+    deviceId: deviceIdSchema,
+    model: modelSchema,
     config: LightConfigSchema,
   }),
   z.object({
     type: z.literal('thermostat'),
-    name: z.string().min(1),
-    location: z.string().min(1),
+    deviceId: deviceIdSchema,
+    model: modelSchema,
     config: ThermostatConfigSchema,
   }),
   z.object({
     type: z.literal('camera'),
-    name: z.string().min(1),
-    location: z.string().min(1),
+    deviceId: deviceIdSchema,
+    model: modelSchema,
     config: CameraConfigSchema,
   }),
 ]);
 
 export const UpdateDeviceSchema = z
   .object({
-    name: z.string().min(1).optional(),
-    location: z.string().min(1).optional(),
     status: z.enum(['online', 'offline']).optional(),
     config: z.record(z.unknown()).optional(),
   })

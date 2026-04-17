@@ -23,21 +23,21 @@ export class FileDeviceRepository implements IDeviceRepository {
     return this.store.read().devices;
   }
 
-  findById(id: string): Device | null {
-    return this.store.read().devices.find((d) => d.id === id) ?? null;
+  findById(deviceId: string): Device | null {
+    return this.store.read().devices.find((d) => d.deviceId === deviceId) ?? null;
   }
 
   update(device: Device): Device {
     const data = this.store.read();
-    const index = data.devices.findIndex((d) => d.id === device.id);
+    const index = data.devices.findIndex((d) => d.deviceId === device.deviceId);
     data.devices[index] = device;
     this.store.write(data);
     return device;
   }
 
-  delete(id: string): boolean {
+  delete(deviceId: string): boolean {
     const data = this.store.read();
-    const index = data.devices.findIndex((d) => d.id === id);
+    const index = data.devices.findIndex((d) => d.deviceId === deviceId);
     if (index === -1) return false;
     data.devices.splice(index, 1);
     this.store.write(data);

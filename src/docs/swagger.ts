@@ -3,9 +3,8 @@ import { OpenAPIV3 } from 'openapi-types';
 const deviceBase = {
   type: 'object',
   properties: {
-    id: { type: 'string', format: 'uuid', example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' },
-    name: { type: 'string', example: 'Living Room Light' },
-    location: { type: 'string', example: 'Lounge' },
+    deviceId: { type: 'string', example: 'AA:BB:CC:DD:EE:FF' },
+    model: { type: 'string', example: 'Philips Hue A19' },
     status: { type: 'string', enum: ['online', 'offline'] },
     createdAt: { type: 'string', format: 'date-time' },
     updatedAt: { type: 'string', format: 'date-time' },
@@ -66,11 +65,11 @@ export const spec: OpenAPIV3.Document = {
                     allOf: [
                       {
                         type: 'object',
-                        required: ['type', 'name', 'location', 'config'],
+                        required: ['type', 'deviceId', 'model', 'config'],
                         properties: {
                           type: { type: 'string', enum: ['light'] },
-                          name: { type: 'string' },
-                          location: { type: 'string' },
+                          deviceId: { type: 'string' },
+                          model: { type: 'string' },
                           config: lightConfig,
                         },
                       },
@@ -81,11 +80,11 @@ export const spec: OpenAPIV3.Document = {
                     allOf: [
                       {
                         type: 'object',
-                        required: ['type', 'name', 'location', 'config'],
+                        required: ['type', 'deviceId', 'model', 'config'],
                         properties: {
                           type: { type: 'string', enum: ['thermostat'] },
-                          name: { type: 'string' },
-                          location: { type: 'string' },
+                          deviceId: { type: 'string' },
+                          model: { type: 'string' },
                           config: thermostatConfig,
                         },
                       },
@@ -96,11 +95,11 @@ export const spec: OpenAPIV3.Document = {
                     allOf: [
                       {
                         type: 'object',
-                        required: ['type', 'name', 'location', 'config'],
+                        required: ['type', 'deviceId', 'model', 'config'],
                         properties: {
                           type: { type: 'string', enum: ['camera'] },
-                          name: { type: 'string' },
-                          location: { type: 'string' },
+                          deviceId: { type: 'string' },
+                          model: { type: 'string' },
                           config: cameraConfig,
                         },
                       },
@@ -138,7 +137,7 @@ export const spec: OpenAPIV3.Document = {
     },
     '/devices/{id}': {
       parameters: [
-        { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+        { name: 'deviceId', in: 'path', required: true, schema: { type: 'string' } },
       ],
       get: {
         tags: ['Devices'],
@@ -162,8 +161,6 @@ export const spec: OpenAPIV3.Document = {
                 type: 'object',
                 minProperties: 1,
                 properties: {
-                  name: { type: 'string', minLength: 1 },
-                  location: { type: 'string', minLength: 1 },
                   status: { type: 'string', enum: ['online', 'offline'] },
                   config: {
                     type: 'object',

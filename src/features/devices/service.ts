@@ -1,20 +1,22 @@
-import { v4 as uuidv4 } from 'uuid';
 import { Device } from './model';
 import { IDeviceRepository } from './repository';
 import { CreateDeviceInput, UpdateDeviceInput } from './schema';
-import { NotFoundError } from '@/middleware/errorHandler';
+import { NotFoundError, ConflictError } from '@/middleware/errorHandler';
 import { logger } from '@/logger';
 
 export class DeviceService {
   constructor(private repo: IDeviceRepository) {}
 
   create(input: CreateDeviceInput): Device {
+    if (this.repo.findById(input.deviceId)) {
+      throw new ConflictError(input.deviceId);
+    }
+
     const now = new Date().toISOString();
     const device = {
-      id: uuidv4(),
-      name: input.name,
+      deviceId: input.deviceId,
+      model: input.model,
       type: input.type,
-      location: input.location,
       status: 'online' as const,
       config: input.config,
       createdAt: now,
@@ -24,8 +26,8 @@ export class DeviceService {
     this.repo.create(device);
 
     logger
-      .child({ deviceId: device.id, deviceType: device.type })
-      .info({ name: device.name, location: device.location }, 'Device registered');
+      .child({ deviceId: device.deviceId, deviceType: device.type })
+      .info({ model: device.model }, 'Device registered');
 
     return device;
   }
@@ -34,19 +36,17 @@ export class DeviceService {
     return this.repo.findAll();
   }
 
-  findById(id: string): Device {
-    const device = this.repo.findById(id);
-    if (!device) throw new NotFoundError(id);
+  findById(deviceId: string): Device {
+    const device = this.repo.findById(deviceId);
+    if (!device) throw new NotFoundError(deviceId);
     return device;
   }
 
-  update(id: string, patch: UpdateDeviceInput): Device {
-    const existing = this.findById(id);
+  update(deviceId: string, patch: UpdateDeviceInput): Device {
+    const existing = this.findById(deviceId);
 
     const updated = {
       ...existing,
-      ...(patch.name !== undefined && { name: patch.name }),
-      ...(patch.location !== undefined && { location: patch.location }),
       ...(patch.status !== undefined && { status: patch.status }),
       config:
         patch.config !== undefined ? { ...existing.config, ...patch.config } : existing.config,
@@ -55,7 +55,7 @@ export class DeviceService {
 
     this.repo.update(updated);
 
-    const log = logger.child({ deviceId: id, deviceType: existing.type });
+    const log = logger.child({ deviceId, deviceType: existing.type });
 
     if (patch.status !== undefined && patch.status !== existing.status) {
       log.info({ from: existing.status, to: patch.status }, 'Device status changed');
@@ -74,21 +74,14 @@ export class DeviceService {
       }
     }
 
-    if (patch.name !== undefined || patch.location !== undefined) {
-      log.debug(
-        { name: patch.name, location: patch.location },
-        'Device metadata updated',
-      );
-    }
-
     return updated;
   }
 
-  delete(id: string): void {
-    const device = this.findById(id);
-    this.repo.delete(id);
+  delete(deviceId: string): void {
+    const device = this.findById(deviceId);
+    this.repo.delete(deviceId);
     logger
-      .child({ deviceId: id, deviceType: device.type })
-      .info({ name: device.name, location: device.location }, 'Device deleted');
+      .child({ deviceId, deviceType: device.type })
+      .info({ model: device.model }, 'Device deleted');
   }
 }

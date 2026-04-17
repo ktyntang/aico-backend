@@ -13,8 +13,14 @@ export class AppError extends Error {
 }
 
 export class NotFoundError extends AppError {
-  constructor(id: string) {
-    super(404, `Device with id '${id}' not found`);
+  constructor(deviceId: string) {
+    super(404, `Device with deviceId '${deviceId}' not found`);
+  }
+}
+
+export class ConflictError extends AppError {
+  constructor(deviceId: string) {
+    super(409, `Device with deviceId '${deviceId}' is already registered`);
   }
 }
 

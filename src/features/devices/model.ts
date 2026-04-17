@@ -1,7 +1,6 @@
 export interface DeviceBase {
-  id: string;
-  name: string;
-  location: string;
+  deviceId: string;
+  model: string;
   status: 'online' | 'offline';
   createdAt: string;
   updatedAt: string;

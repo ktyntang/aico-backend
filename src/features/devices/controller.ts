@@ -23,7 +23,7 @@ export class DeviceController {
 
   findById = (req: Request, res: Response, next: NextFunction): void => {
     try {
-      res.json(this.service.findById(req.params.id));
+      res.json(this.service.findById(req.params.deviceId));
     } catch (err) {
       next(err);
     }
@@ -31,7 +31,7 @@ export class DeviceController {
 
   update = (req: Request, res: Response, next: NextFunction): void => {
     try {
-      res.json(this.service.update(req.params.id, req.body));
+      res.json(this.service.update(req.params.deviceId, req.body));
     } catch (err) {
       next(err);
     }
@@ -39,7 +39,7 @@ export class DeviceController {
 
   delete = (req: Request, res: Response, next: NextFunction): void => {
     try {
-      this.service.delete(req.params.id);
+      this.service.delete(req.params.deviceId);
       res.status(204).send();
     } catch (err) {
       next(err);

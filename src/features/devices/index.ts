@@ -14,9 +14,9 @@ export function createDevicesRouter(db: DbStore): Router {
   const router = Router();
   router.post('/', validate(CreateDeviceSchema), controller.create);
   router.get('/', controller.findAll);
-  router.get('/:id', controller.findById);
-  router.patch('/:id', validate(UpdateDeviceSchema), controller.update);
-  router.delete('/:id', controller.delete);
+  router.get('/:deviceId', controller.findById);
+  router.patch('/:deviceId', validate(UpdateDeviceSchema), controller.update);
+  router.delete('/:deviceId', controller.delete);
 
   return router;
 }
