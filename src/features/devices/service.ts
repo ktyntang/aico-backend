@@ -3,6 +3,7 @@ import { Device } from './model';
 import { IDeviceRepository } from './repository';
 import { CreateDeviceInput, UpdateDeviceInput } from './schema';
 import { NotFoundError } from '@/middleware/errorHandler';
+import { logger } from '@/logger';
 
 export class DeviceService {
   constructor(private repo: IDeviceRepository) {}
@@ -20,7 +21,13 @@ export class DeviceService {
       updatedAt: now,
     } as Device;
 
-    return this.repo.create(device);
+    this.repo.create(device);
+
+    logger
+      .child({ deviceId: device.id, deviceType: device.type })
+      .info({ name: device.name, location: device.location }, 'Device registered');
+
+    return device;
   }
 
   findAll(): Device[] {
@@ -46,11 +53,42 @@ export class DeviceService {
       updatedAt: new Date().toISOString(),
     } as Device;
 
-    return this.repo.update(updated);
+    this.repo.update(updated);
+
+    const log = logger.child({ deviceId: id, deviceType: existing.type });
+
+    if (patch.status !== undefined && patch.status !== existing.status) {
+      log.info({ from: existing.status, to: patch.status }, 'Device status changed');
+    }
+
+    if (patch.config !== undefined) {
+      const existingConfig = existing.config as unknown as Record<string, unknown>;
+      const changedKeys = Object.keys(patch.config).filter(
+        (k) => JSON.stringify(patch.config![k]) !== JSON.stringify(existingConfig[k]),
+      );
+      if (changedKeys.length > 0) {
+        const diff = Object.fromEntries(
+          changedKeys.map((k) => [k, { from: existingConfig[k], to: patch.config![k] }]),
+        );
+        log.info({ diff }, 'Device config changed');
+      }
+    }
+
+    if (patch.name !== undefined || patch.location !== undefined) {
+      log.debug(
+        { name: patch.name, location: patch.location },
+        'Device metadata updated',
+      );
+    }
+
+    return updated;
   }
 
   delete(id: string): void {
-    const deleted = this.repo.delete(id);
-    if (!deleted) throw new NotFoundError(id);
+    const device = this.findById(id);
+    this.repo.delete(id);
+    logger
+      .child({ deviceId: id, deviceType: device.type })
+      .info({ name: device.name, location: device.location }, 'Device deleted');
   }
 }
