@@ -1,14 +1,13 @@
 import { Router } from 'express';
-import { LowSync } from 'lowdb';
-import { DbSchema } from '@/db/database';
-import { LowDbDeviceRepository } from './repository';
+import { DbStore } from '@/db/database';
+import { FileDeviceRepository } from './repository';
 import { DeviceService } from './service';
 import { DeviceController } from './controller';
 import { validate } from '@/middleware/validate';
 import { CreateDeviceSchema, UpdateDeviceSchema } from './schema';
 
-export function createDevicesRouter(db: LowSync<DbSchema>): Router {
-  const repo = new LowDbDeviceRepository(db);
+export function createDevicesRouter(db: DbStore): Router {
+  const repo = new FileDeviceRepository(db);
   const service = new DeviceService(repo);
   const controller = new DeviceController(service);
 

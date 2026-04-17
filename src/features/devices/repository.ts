@@ -1,6 +1,5 @@
-import { LowSync } from 'lowdb';
+import { DbStore } from '@/db/database';
 import { Device } from './model';
-import { DbSchema } from '@/db/database';
 
 export interface IDeviceRepository {
   create(device: Device): Device;
@@ -10,39 +9,38 @@ export interface IDeviceRepository {
   delete(id: string): boolean;
 }
 
-export class LowDbDeviceRepository implements IDeviceRepository {
-  constructor(private db: LowSync<DbSchema>) {}
-
-  private get devices(): Device[] {
-    return this.db.data!.devices;
-  }
+export class FileDeviceRepository implements IDeviceRepository {
+  constructor(private store: DbStore) {}
 
   create(device: Device): Device {
-    this.devices.push(device);
-    this.db.write();
+    const data = this.store.read();
+    data.devices.push(device);
+    this.store.write(data);
     return device;
   }
 
   findAll(): Device[] {
-    return this.devices;
+    return this.store.read().devices;
   }
 
   findById(id: string): Device | null {
-    return this.devices.find((d) => d.id === id) ?? null;
+    return this.store.read().devices.find((d) => d.id === id) ?? null;
   }
 
   update(device: Device): Device {
-    const index = this.devices.findIndex((d) => d.id === device.id);
-    this.devices[index] = device;
-    this.db.write();
+    const data = this.store.read();
+    const index = data.devices.findIndex((d) => d.id === device.id);
+    data.devices[index] = device;
+    this.store.write(data);
     return device;
   }
 
   delete(id: string): boolean {
-    const index = this.devices.findIndex((d) => d.id === id);
+    const data = this.store.read();
+    const index = data.devices.findIndex((d) => d.id === id);
     if (index === -1) return false;
-    this.devices.splice(index, 1);
-    this.db.write();
+    data.devices.splice(index, 1);
+    this.store.write(data);
     return true;
   }
 }
