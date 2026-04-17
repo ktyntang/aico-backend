@@ -1,0 +1,2 @@
+echo "Running tests..."
+npx jest --passWithNoTests
