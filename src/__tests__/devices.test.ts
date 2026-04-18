@@ -11,21 +11,21 @@ const validLight = {
   type: 'light',
   deviceId: 'AA:BB:CC:DD:EE:01',
   model: 'Philips Hue A19',
-  config: { isOn: true, brightness: 80 },
+  state: { isOn: true, brightness: 80 },
 };
 
 const validThermostat = {
   type: 'thermostat',
   deviceId: 'AA:BB:CC:DD:EE:02',
   model: 'Nest Learning Thermostat',
-  config: { targetTemp: 21, currentTemp: 19, mode: 'heat' },
+  state: { targetTemp: 21, currentTemp: 19, mode: 'heat' },
 };
 
 const validCamera = {
   type: 'camera',
   deviceId: 'AA:BB:CC:DD:EE:03',
   model: 'Arlo Pro 4',
-  config: { isRecording: true, resolution: '1080p', motionDetection: true },
+  state: { isRecording: true, resolution: '1080p', motionDetection: true },
 };
 
 // ─── Assertion helpers ────────────────────────────────────────────────────────
@@ -130,7 +130,7 @@ describe('Device API', () => {
     it('returns 201 when registering a light with optional colorTemp', async () => {
       const res = await request(app)
         .post('/api/devices')
-        .send({ ...validLight, config: { ...validLight.config, colorTemp: 4000 } });
+        .send({ ...validLight, state: { ...validLight.state, colorTemp: 4000 } });
       expect(res.status).toBe(201);
       expect(res.body.state.desired.colorTemp).toBe(4000);
     });
@@ -162,21 +162,21 @@ describe('Device API', () => {
       );
     });
 
-    it('returns 400 when config is an empty object', async () => {
+    it('returns 400 when state is an empty object', async () => {
       expect400(
         await request(app)
           .post('/api/devices')
-          .send({ ...validLight, config: {} }),
+          .send({ ...validLight, state: {} }),
       );
     });
 
-    it('returns 400 when config does not match the device type', async () => {
+    it('returns 400 when state does not match the device type', async () => {
       expect400(
         await request(app).post('/api/devices').send({
           type: 'light',
           deviceId: 'AA:BB:CC:DD:EE:FF',
           model: 'Test Device',
-          config: validThermostat.config,
+          state: validThermostat.state,
         }),
       );
     });
@@ -247,7 +247,7 @@ describe('Device API', () => {
     it('returns 200 with config unchanged when an empty desired object is sent', async () => {
       const res = await patch(deviceId, { state: { desired: {} } });
       expect(res.status).toBe(200);
-      expect(res.body.state.desired).toMatchObject(validLight.config);
+      expect(res.body.state.desired).toMatchObject(validLight.state);
     });
 
     it('advances updatedAt but keeps createdAt unchanged after an update', async () => {

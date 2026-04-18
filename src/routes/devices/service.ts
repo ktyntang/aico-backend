@@ -1,6 +1,12 @@
 import { Device, DeviceState } from './model';
 import { IDeviceRepository } from './repository';
-import { CreateDeviceInput, UpdateDeviceInput } from './schema';
+import {
+  CreateDeviceInput,
+  UpdateDeviceInput,
+  LightStateUpdateSchema,
+  ThermostatStateUpdateSchema,
+  CameraStateUpdateSchema,
+} from './schema';
 import { NotFoundError, ConflictError } from '@/middleware/errorHandler';
 import { logger } from '@/logger';
 
@@ -27,10 +33,10 @@ export class DeviceService {
     }
 
     const now = new Date().toISOString();
-    const initialConfig = input.config as Record<string, unknown>;
-    const state: DeviceState<typeof input.config> = {
+    const initialConfig = input.state as Record<string, unknown>;
+    const state: DeviceState<typeof input.state> = {
       desired: initialConfig,
-      reported: initialConfig,
+      reported: {},
       delta: {},
     };
 
@@ -65,6 +71,17 @@ export class DeviceService {
 
   update(deviceId: string, patch: UpdateDeviceInput): Device {
     const existing = this.findById(deviceId);
+
+    if (patch.state) {
+      const stateSchema = {
+        light: LightStateUpdateSchema,
+        thermostat: ThermostatStateUpdateSchema,
+        camera: CameraStateUpdateSchema,
+      }[existing.type];
+      if (patch.state.desired !== undefined) stateSchema.parse(patch.state.desired);
+      if (patch.state.reported !== undefined) stateSchema.parse(patch.state.reported);
+    }
+
     const existingState = existing.state as unknown as {
       desired: Record<string, unknown>;
       reported: Record<string, unknown>;
@@ -114,7 +131,9 @@ export class DeviceService {
 
   delete(deviceId: string): void {
     const device = this.findById(deviceId);
-    this.repo.delete(deviceId);
+    const deleted = this.repo.delete(deviceId);
+    if (!deleted)
+      throw new Error(`Invariant violation: delete failed for existing device ${deviceId}`);
     logger
       .child({ deviceId, deviceType: device.type })
       .info({ model: device.model }, 'Device deleted');

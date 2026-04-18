@@ -65,12 +65,12 @@ export const spec: OpenAPIV3.Document = {
                     allOf: [
                       {
                         type: 'object',
-                        required: ['type', 'deviceId', 'model', 'config'],
+                        required: ['type', 'deviceId', 'model', 'state'],
                         properties: {
                           type: { type: 'string', enum: ['light'] },
                           deviceId: { type: 'string' },
                           model: { type: 'string' },
-                          config: lightConfig,
+                          state: lightConfig,
                         },
                       },
                     ],
@@ -80,12 +80,12 @@ export const spec: OpenAPIV3.Document = {
                     allOf: [
                       {
                         type: 'object',
-                        required: ['type', 'deviceId', 'model', 'config'],
+                        required: ['type', 'deviceId', 'model', 'state'],
                         properties: {
                           type: { type: 'string', enum: ['thermostat'] },
                           deviceId: { type: 'string' },
                           model: { type: 'string' },
-                          config: thermostatConfig,
+                          state: thermostatConfig,
                         },
                       },
                     ],
@@ -95,12 +95,12 @@ export const spec: OpenAPIV3.Document = {
                     allOf: [
                       {
                         type: 'object',
-                        required: ['type', 'deviceId', 'model', 'config'],
+                        required: ['type', 'deviceId', 'model', 'state'],
                         properties: {
                           type: { type: 'string', enum: ['camera'] },
                           deviceId: { type: 'string' },
                           model: { type: 'string' },
-                          config: cameraConfig,
+                          state: cameraConfig,
                         },
                       },
                     ],
@@ -118,6 +118,7 @@ export const spec: OpenAPIV3.Document = {
             content: { 'application/json': { schema: { $ref: '#/components/schemas/Device' } } },
           },
           '400': { $ref: '#/components/responses/ValidationError' },
+          '409': { $ref: '#/components/responses/ConflictError' },
         },
       },
       get: {
@@ -135,7 +136,7 @@ export const spec: OpenAPIV3.Document = {
         },
       },
     },
-    '/devices/{id}': {
+    '/devices/{deviceId}': {
       parameters: [{ name: 'deviceId', in: 'path', required: true, schema: { type: 'string' } }],
       get: {
         tags: ['Devices'],
@@ -261,6 +262,14 @@ export const spec: OpenAPIV3.Document = {
                 details: { type: 'array', items: { type: 'object' } },
               },
             },
+          },
+        },
+      },
+      ConflictError: {
+        description: 'Device already registered',
+        content: {
+          'application/json': {
+            schema: { type: 'object', properties: { error: { type: 'string' } } },
           },
         },
       },

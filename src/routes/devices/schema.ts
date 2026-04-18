@@ -26,19 +26,19 @@ export const CreateDeviceSchema = z.discriminatedUnion('type', [
     type: z.literal('light'),
     deviceId: deviceIdSchema,
     model: modelSchema,
-    config: LightConfigSchema,
+    state: LightConfigSchema,
   }),
   z.object({
     type: z.literal('thermostat'),
     deviceId: deviceIdSchema,
     model: modelSchema,
-    config: ThermostatConfigSchema,
+    state: ThermostatConfigSchema,
   }),
   z.object({
     type: z.literal('camera'),
     deviceId: deviceIdSchema,
     model: modelSchema,
-    config: CameraConfigSchema,
+    state: CameraConfigSchema,
   }),
 ]);
 
@@ -58,6 +58,10 @@ export const UpdateDeviceSchema = z
   .refine((data) => data.status !== undefined || data.state !== undefined, {
     message: 'At least one field must be provided',
   });
+
+export const LightStateUpdateSchema = LightConfigSchema.partial();
+export const ThermostatStateUpdateSchema = ThermostatConfigSchema.partial();
+export const CameraStateUpdateSchema = CameraConfigSchema.partial();
 
 export type CreateDeviceInput = z.infer<typeof CreateDeviceSchema>;
 export type UpdateDeviceInput = z.infer<typeof UpdateDeviceSchema>;
