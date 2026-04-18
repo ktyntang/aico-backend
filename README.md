@@ -51,7 +51,7 @@ The server starts at `http://localhost:3000`.
 npm test
 ```
 
-28 tests covering all endpoints. Each test runs against an isolated temporary database file cleaned up afterwards.
+31 tests covering all endpoints. Each test runs against an isolated temporary database file cleaned up afterwards.
 
 ## Approach
 
@@ -59,28 +59,38 @@ npm test
 
 **Type safety** is enforced via a TypeScript discriminated union. Device config is fully typed per device type at compile time. And Zod schemas mirror these types at the HTTP boundary, rejecting invalid requests before they reach business logic.
 
-**Data Storage** uses a plain JSON file to keep things simple for review. No infrastructure required, data survives restarts. The `IDeviceRepository` interface means swapping to a real database only needs a single new file with no changes to the service layer. Unfortunately, the current `FileDeviceRepository` reads the full file on every operation (O(n)). An in-memory cache could improve this, but the expected migration path is to a real database (which provides O(1) indexed lookups) so the added complexity isn't worthwhile here.
+**Shadow state model** separates device intent from device reality. Each device holds a `state` object with three fields:
+
+| Field      | Written by              | Meaning                                      |
+| ---------- | ----------------------- | -------------------------------------------- |
+| `desired`  | Application / dashboard | What you want the device to do               |
+| `reported` | The device itself       | What the device last confirmed it is doing   |
+| `delta`    | Computed (read-only)    | Keys where `desired` differs from `reported` |
+
+In production, writes to `reported` would come from a separate device-authenticated endpoint, and writes to `desired` would come from the application. But for simplicity, both are writable through the single `PATCH` endpoint here.
+
+**Data Storage** uses a plain JSON file to keep things simple for review. The `IDeviceRepository` interface means swapping to a real database only needs a single new file with no changes to the service layer. Unfortunately, the current `FileDeviceRepository` reads the full file on every operation (O(n)). An in-memory cache could improve this, but the expected migration path is to a real database (which provides O(1) indexed lookups) so the added complexity isn't worthwhile here.
 
 **Observability** uses Pino logger. Every request gets a UUID trace ID and the error handler logs via `req.log` to correlate errors to the originating request.
 
 ## Future Improvements
 
-**Write origin and intent.** Currently `PATCH /devices/:deviceId` conflates two different write types (admin configuration and user commands). These have different access control and audit requirements. Splitting the route into `/devices/:deviceId/config` and `/devices/:deviceId/commands` would let each be governed separately.
+**Separate authenticated endpoints for reported vs desired writes.** See the shadow state model above.
 
-**Connectivity ownership.** Currently `status` is a plain writable field. This doesn't reflect how connectivity works in practice where devices can go offline unexpectedly (power loss, network drop, firmware crash) and the client cannot declare itself offline. A better method could be to have the device itself call a heartbeat endpoint periodically while running. The server stamps `lastSeenAt` on each call, and `status` is derived automatically. If a device that hasn't reported in within a configurable TTL is considered `offline`. This lets the server detect and log unexpected disconnects.
+**Slow operations.** See the data storage section above.
+
+**Connectivity management.** Currently `status` is a plain writable field. This doesn't reflect how connectivity works in practice where devices can go offline unexpectedly and the client cannot declare itself offline. An alternate method could be to have the device itself call a heartbeat endpoint periodically while running. The server stamps `lastSeenAt` on each call, and `status` is derived automatically. If a device that hasn't reported in within a configurable TTL is considered `offline`. This lets the server detect and log unexpected disconnects.
 
 **Authentication and authorisation.** All endpoints are currently unauthenticated. In production, an API key or JWT middleware should be added. Per-device ownership would also let the authorisation layer prevent one user from modifying or deleting another's devices.
 
 **Rate limiting.** With more time, rate limiting should be implemented since the endpoints are vulnerable to being flooded either maliciously or by a misconfigured device.
 
-**Telemetry separation.** Sensor readings (temperature, motion events) arrive at much higher frequency than user commands. To prevent confusion over desired state vs observed history,a dedicated `POST /devices/:deviceId/telemetry` endpoint could be added, where data is stored as a time-series log rather than the current `config` snapshot. The API could then provide a `GET /devices/:deviceId/telemetry` endpoint to retrieve historical data for graphing or analysis.
+**Telemetry separation.** The device's latest confirmed state is overwritten on every update. Continuous sensor readings like temperature or motion events would be better stored as a time-series log. A dedicated POST telemetry endpoint could accept these high-frequency readings, with a corresponding GET endpoint for querying historical data for trend analysis or alerting.
 
 **Pagination and filtering.**
 Currently `GET /devices` returns all devices in one response, which could become unwieldy as the number of devices grows.
 
 ## Assumptions
 
-- `deviceId` is supplied by the caller, not generated server-side.
-- Config on creation is required and complete. All config fields for the device type must be provided at registration. `PATCH` then accepts partial config and performs a shallow merge.
-- `status` defaults to `online` on registration. a newly registered device is assumed reachable. In production this should remain `offline` until the device confirms connectivity via a heartbeat.
-- Only one instance of the application should be running at a time. Since the file-backed store has no locking or coordination, so running multiple processes against the same file is unsafe.
+- All config fields for the device type must be provided at registration. This becomes the initial `desired` and `reported` state, with `delta` empty. `reported` equalling `desired` at creation is a convenience assumption. In production, `reported` would start empty and fill in as the device comes online.
+- Only one instance of the application should be running at a time. The file-backed store has no locking or coordination, so running multiple processes against the same file is unsafe.
