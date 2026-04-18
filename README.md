@@ -9,27 +9,26 @@ A RESTful API for managing IoT devices in a smart home environment. Supports lig
 
 ## Getting Started
 
+Single command to install all dependencies and start both backend and frontend servers concurrently.
 ```bash
 npm run setup
 ```
 
-Single command to install all dependencies and start both backend and frontend servers concurrently.
-
-Alternatively:
+Alternatively, start just the backend server.
 
 ```bash
 npm install
 npm run dev
 ```
 
-To start just the backend server with hot reload. Then in a separate terminal:
+Then in a separate terminal, start the frontend server separately.
 
 ```bash
 npm install --prefix frontend
 npm run dev:frontend
 ```
 
-To start the frontend server separately.
+
 
 | Service      | URL                              | Description             |
 | ------------ | -------------------------------- | ----------------------- |
