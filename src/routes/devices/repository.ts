@@ -12,6 +12,10 @@ export interface IDeviceRepository {
 export class FileDeviceRepository implements IDeviceRepository {
   constructor(private store: DbStore) {}
 
+  private devices(data: ReturnType<DbStore['read']>): Device[] {
+    return data.devices as Device[];
+  }
+
   create(device: Device): Device {
     const data = this.store.read();
     data.devices.push(device);
@@ -20,16 +24,16 @@ export class FileDeviceRepository implements IDeviceRepository {
   }
 
   findAll(): Device[] {
-    return this.store.read().devices;
+    return this.devices(this.store.read());
   }
 
   findById(deviceId: string): Device | null {
-    return this.store.read().devices.find((d) => d.deviceId === deviceId) ?? null;
+    return this.devices(this.store.read()).find((d) => d.deviceId === deviceId) ?? null;
   }
 
   update(device: Device): Device {
     const data = this.store.read();
-    const index = data.devices.findIndex((d) => d.deviceId === device.deviceId);
+    const index = this.devices(data).findIndex((d) => d.deviceId === device.deviceId);
     data.devices[index] = device;
     this.store.write(data);
     return device;
@@ -37,7 +41,7 @@ export class FileDeviceRepository implements IDeviceRepository {
 
   delete(deviceId: string): boolean {
     const data = this.store.read();
-    const index = data.devices.findIndex((d) => d.deviceId === deviceId);
+    const index = this.devices(data).findIndex((d) => d.deviceId === deviceId);
     if (index === -1) return false;
     data.devices.splice(index, 1);
     this.store.write(data);

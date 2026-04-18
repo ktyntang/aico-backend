@@ -1,9 +1,8 @@
 import path from 'path';
 import fs from 'fs';
-import { Device } from '@/routes/devices/model';
 
 export interface DbSchema {
-  devices: Device[];
+  devices: unknown[];
 }
 
 export interface DbStore {
