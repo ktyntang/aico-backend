@@ -106,12 +106,12 @@ describe('Device API', () => {
       expect(res.body.updatedAt).toMatch(ISO_Regex);
     });
 
-    it('returns 201 with desired and reported set to the initial config and delta empty', async () => {
+    it('returns 201 with desired set to the initial config, reported and delta empty', async () => {
       const res = await request(app).post('/api/devices').send(validLight);
       expect(res.status).toBe(201);
       expect(res.body.state).toMatchObject({
         desired: { isOn: true, brightness: 80 },
-        reported: { isOn: true, brightness: 80 },
+        reported: {},
         delta: {},
       });
     });
@@ -124,7 +124,6 @@ describe('Device API', () => {
       expect(res.status).toBe(201);
       expect(res.body.type).toBe(body.type);
       expect(res.body.state.desired).toMatchObject(expectedState);
-      expect(res.body.state.reported).toMatchObject(expectedState);
     });
 
     it('returns 201 when registering a light with optional colorTemp', async () => {
@@ -226,6 +225,10 @@ describe('Device API', () => {
       deviceId = created.deviceId as string;
     });
 
+    afterEach(async () => {
+      await request(app).delete(`/api/devices/${deviceId}`);
+    });
+
     it('returns 200 with updated status and all other fields preserved', async () => {
       const res = await patch(deviceId, { status: 'offline' });
       expect(res.status).toBe(200);
@@ -278,14 +281,12 @@ describe('Device API', () => {
     it('delta correctly reflects keys where desired differs from reported', async () => {
       const res = await patch(deviceId, { state: { desired: { isOn: false } } });
       expect(res.status).toBe(200);
-      // desired changed, reported still has isOn: true.  delta should flag isOn
       expect(res.body.state.delta).toMatchObject({ isOn: false });
-      expect(res.body.state.reported).toMatchObject({ isOn: true });
+      expect(res.body.state.reported).toEqual({});
     });
 
     it('delta collapses to empty after reported is updated to match desired', async () => {
-      await patch(deviceId, { state: { desired: { isOn: false } } });
-      const res = await patch(deviceId, { state: { reported: { isOn: false } } });
+      const res = await patch(deviceId, { state: { reported: { ...validLight.state } } });
       expect(res.status).toBe(200);
       expect(res.body.state.delta).toEqual({});
     });
@@ -297,14 +298,26 @@ describe('Device API', () => {
       expect(res.body.state.reported.isOn).toBe(false);
     });
 
-    it('updates both desired and reported in one request', async () => {
+    it('can update both desired and reported in one request', async () => {
       const res = await patch(deviceId, {
         state: { desired: { brightness: 50 }, reported: { brightness: 50 } },
       });
       expect(res.status).toBe(200);
       expect(res.body.state.desired.brightness).toBe(50);
       expect(res.body.state.reported.brightness).toBe(50);
-      expect(res.body.state.delta).toEqual({});
+      expect(res.body.state.delta.brightness).toBeUndefined();
+    });
+
+    it('accurately updates the delta based on the received state', async () => {
+      const res = await patch(deviceId, {
+        state: {
+          desired: { brightness: 100, isOn: true },
+          reported: { brightness: 50, isOn: true },
+        },
+      });
+      expect(res.status).toBe(200);
+      expect(res.body.state.delta.brightness).toEqual(100);
+      expect(res.body.state.delta.isOn).toBeUndefined();
     });
   });
 
