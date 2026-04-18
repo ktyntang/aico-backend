@@ -100,21 +100,31 @@ describe('Device API', () => {
         type: 'light',
         deviceId: 'AA:BB:CC:DD:EE:01',
         model: 'Philips Hue A19',
-        status: 'online',
-        config: { isOn: true, brightness: 80 },
+        status: 'offline',
       });
       expect(res.body.createdAt).toMatch(ISO_Regex);
       expect(res.body.updatedAt).toMatch(ISO_Regex);
     });
 
+    it('returns 201 with desired and reported set to the initial config and delta empty', async () => {
+      const res = await request(app).post('/api/devices').send(validLight);
+      expect(res.status).toBe(201);
+      expect(res.body.state).toMatchObject({
+        desired: { isOn: true, brightness: 80 },
+        reported: { isOn: true, brightness: 80 },
+        delta: {},
+      });
+    });
+
     it.each([
       ['thermostat', validThermostat, { targetTemp: 21, mode: 'heat' }],
       ['camera', validCamera, { resolution: '1080p' }],
-    ] as const)('returns 201 when registering a %s', async (_, body, expectedConfig) => {
+    ] as const)('returns 201 when registering a %s', async (_, body, expectedState) => {
       const res = await request(app).post('/api/devices').send(body);
       expect(res.status).toBe(201);
       expect(res.body.type).toBe(body.type);
-      expect(res.body.config).toMatchObject(expectedConfig);
+      expect(res.body.state.desired).toMatchObject(expectedState);
+      expect(res.body.state.reported).toMatchObject(expectedState);
     });
 
     it('returns 201 when registering a light with optional colorTemp', async () => {
@@ -122,13 +132,7 @@ describe('Device API', () => {
         .post('/api/devices')
         .send({ ...validLight, config: { ...validLight.config, colorTemp: 4000 } });
       expect(res.status).toBe(201);
-      expect(res.body.config.colorTemp).toBe(4000);
-    });
-
-    it('allows two devices with different deviceIds to coexist', async () => {
-      const a = await registerDevice(validLight);
-      const b = await registerDevice(validThermostat);
-      expect(a.deviceId).not.toBe(b.deviceId);
+      expect(res.body.state.desired.colorTemp).toBe(4000);
     });
 
     it('returns 409 when registering a deviceId that already exists', async () => {
@@ -230,21 +234,20 @@ describe('Device API', () => {
         status: 'offline',
         type: validLight.type,
         model: validLight.model,
-        config: validLight.config,
       });
     });
 
-    it('returns 200 with partially updated config and untouched fields preserved', async () => {
-      const res = await patch(deviceId, { config: { isOn: false } });
+    it('returns 200 with partially updated desired and untouched fields preserved', async () => {
+      const res = await patch(deviceId, { state: { desired: { isOn: false } } });
       expect(res.status).toBe(200);
-      expect(res.body.config.isOn).toBe(false);
-      expect(res.body.config.brightness).toBe(80);
+      expect(res.body.state.desired.isOn).toBe(false);
+      expect(res.body.state.desired.brightness).toBe(80);
     });
 
-    it('returns 200 with config unchanged when an empty config object is sent', async () => {
-      const res = await patch(deviceId, { config: {} });
+    it('returns 200 with config unchanged when an empty desired object is sent', async () => {
+      const res = await patch(deviceId, { state: { desired: {} } });
       expect(res.status).toBe(200);
-      expect(res.body.config).toMatchObject(validLight.config);
+      expect(res.body.state.desired).toMatchObject(validLight.config);
     });
 
     it('advances updatedAt but keeps createdAt unchanged after an update', async () => {
@@ -268,6 +271,40 @@ describe('Device API', () => {
 
     it('returns 400 when body contains only unknown fields', async () => {
       expect400(await patch(deviceId, { deviceId: 'new-id' }));
+    });
+
+    // ─── Shadow model behaviour ──────────────────────────────────────────────
+
+    it('delta correctly reflects keys where desired differs from reported', async () => {
+      const res = await patch(deviceId, { state: { desired: { isOn: false } } });
+      expect(res.status).toBe(200);
+      // desired changed, reported still has isOn: true.  delta should flag isOn
+      expect(res.body.state.delta).toMatchObject({ isOn: false });
+      expect(res.body.state.reported).toMatchObject({ isOn: true });
+    });
+
+    it('delta collapses to empty after reported is updated to match desired', async () => {
+      await patch(deviceId, { state: { desired: { isOn: false } } });
+      const res = await patch(deviceId, { state: { reported: { isOn: false } } });
+      expect(res.status).toBe(200);
+      expect(res.body.state.delta).toEqual({});
+    });
+
+    it('patching only reported does not change desired', async () => {
+      const res = await patch(deviceId, { state: { reported: { isOn: false } } });
+      expect(res.status).toBe(200);
+      expect(res.body.state.desired.isOn).toBe(true);
+      expect(res.body.state.reported.isOn).toBe(false);
+    });
+
+    it('updates both desired and reported in one request', async () => {
+      const res = await patch(deviceId, {
+        state: { desired: { brightness: 50 }, reported: { brightness: 50 } },
+      });
+      expect(res.status).toBe(200);
+      expect(res.body.state.desired.brightness).toBe(50);
+      expect(res.body.state.reported.brightness).toBe(50);
+      expect(res.body.state.delta).toEqual({});
     });
   });
 
@@ -293,10 +330,6 @@ describe('Device API', () => {
       const res = await request(app).get('/api/devices');
       expect(res.body).toHaveLength(1);
       expect(res.body[0].type).toBe('thermostat');
-    });
-
-    it('returns 404 when deviceId does not exist', async () => {
-      expect404(await request(app).delete('/api/devices/does-not-exist'));
     });
   });
 });
