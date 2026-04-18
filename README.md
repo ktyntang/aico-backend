@@ -51,7 +51,7 @@ The server starts at `http://localhost:3000`.
 npm test
 ```
 
-31 tests covering all endpoints. Each test runs against an isolated temporary database file cleaned up afterwards.
+Each test runs against an isolated temporary database file cleaned up afterwards.
 
 ## Approach
 
@@ -92,5 +92,5 @@ Currently `GET /devices` returns all devices in one response, which could become
 
 ## Assumptions
 
-- All config fields for the device type must be provided at registration. This becomes the initial `desired` and `reported` state, with `delta` empty. `reported` equalling `desired` at creation is a convenience assumption. In production, `reported` would start empty and fill in as the device comes online.
+- All config fields for the device type must be provided at registration. This becomes the initial `desired` state, with `delta` empty. In production, `reported` would fill in as the device comes online.
 - Only one instance of the application should be running at a time. The file-backed store has no locking or coordination, so running multiple processes against the same file is unsafe.
