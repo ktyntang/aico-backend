@@ -1,6 +1,6 @@
-# aico-backend
+# AICO Technical Test
 
-A RESTful API for managing IoT devices in a smart home environment. Supports lights, thermostats, and cameras with per-device typed configuration, full CRUD operations, and interactive API documentation.
+A RESTful API for managing IoT devices in a smart home environment. Supports lights, thermostats, and cameras with per-device typed configuration, full CRUD operations, and interactive API documentation. Includes a (very simple) static frontend dashboard for device management.
 
 ## Prerequisites
 
@@ -13,29 +13,30 @@ A RESTful API for managing IoT devices in a smart home environment. Supports lig
 npm run setup
 ```
 
-Installs dependencies and starts the dev server. Alternatively:
+Single command to install all dependencies and start both backend and frontend servers concurrently.
+
+Alternatively:
 
 ```bash
 npm install
 npm run dev
 ```
 
-The server starts at `http://localhost:3000`.
+To start just the backend server with hot reload. Then in a separate terminal:
 
-| URL             | Description              |
-| --------------- | ------------------------ |
-| `GET /`         | Health check             |
-| `GET /api/docs` | Swagger UI documentation |
+```bash
+npm install --prefix frontend
+npm run dev:frontend
+```
 
-## API Endpoints
+To start the frontend server separately.
 
-| Method   | Path                     | Description                    |
-| -------- | ------------------------ | ------------------------------ |
-| `POST`   | `/api/devices`           | Register a new device          |
-| `GET`    | `/api/devices`           | List all devices               |
-| `GET`    | `/api/devices/:deviceId` | Get a device by ID             |
-| `PATCH`  | `/api/devices/:deviceId` | Update device status or config |
-| `DELETE` | `/api/devices/:deviceId` | Delete a device                |
+| Service      | URL                              | Description             |
+| ------------ | -------------------------------- | ----------------------- |
+| Backend      | `http://localhost:3000`          | REST API                |
+| Backend Docs | `http://localhost:3000/api/docs` | Swagger UI              |
+| Frontend     | `http://localhost:5173`          | Simple device dashboard |
+|              |
 
 ## Environment Variables
 
