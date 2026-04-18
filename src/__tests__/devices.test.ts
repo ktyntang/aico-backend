@@ -276,6 +276,15 @@ describe('Device API', () => {
       expect400(await patch(deviceId, { deviceId: 'new-id' }));
     });
 
+    it('returns 400 when patching a light with thermostat-specific properties', async () => {
+      expect400(await patch(deviceId, { state: { desired: { targetTemp: 25 } } }));
+    });
+
+    it('returns 400 when patching a thermostat with light-specific properties', async () => {
+      const thermostat = await registerDevice(validThermostat);
+      expect400(await patch(thermostat.deviceId as string, { state: { desired: { isOn: true } } }));
+    });
+
     // ─── Shadow model behaviour ──────────────────────────────────────────────
 
     it('delta correctly reflects keys where desired differs from reported', async () => {

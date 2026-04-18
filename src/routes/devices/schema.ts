@@ -59,9 +59,9 @@ export const UpdateDeviceSchema = z
     message: 'At least one field must be provided',
   });
 
-export const LightStateUpdateSchema = LightConfigSchema.partial();
-export const ThermostatStateUpdateSchema = ThermostatConfigSchema.partial();
-export const CameraStateUpdateSchema = CameraConfigSchema.partial();
+export const LightStateUpdateSchema = LightConfigSchema.partial().strict();
+export const ThermostatStateUpdateSchema = ThermostatConfigSchema.partial().strict();
+export const CameraStateUpdateSchema = CameraConfigSchema.partial().strict();
 
 export type CreateDeviceInput = z.infer<typeof CreateDeviceSchema>;
 export type UpdateDeviceInput = z.infer<typeof UpdateDeviceSchema>;
