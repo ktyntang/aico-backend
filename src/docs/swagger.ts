@@ -136,9 +136,7 @@ export const spec: OpenAPIV3.Document = {
       },
     },
     '/devices/{id}': {
-      parameters: [
-        { name: 'deviceId', in: 'path', required: true, schema: { type: 'string' } },
-      ],
+      parameters: [{ name: 'deviceId', in: 'path', required: true, schema: { type: 'string' } }],
       get: {
         tags: ['Devices'],
         summary: 'Get a device by ID',
@@ -152,7 +150,7 @@ export const spec: OpenAPIV3.Document = {
       },
       patch: {
         tags: ['Devices'],
-        summary: 'Update device status or config',
+        summary: 'Update device status or state',
         requestBody: {
           required: true,
           content: {
@@ -162,10 +160,22 @@ export const spec: OpenAPIV3.Document = {
                 minProperties: 1,
                 properties: {
                   status: { type: 'string', enum: ['online', 'offline'] },
-                  config: {
+                  state: {
                     type: 'object',
-                    additionalProperties: true,
-                    description: 'Partial config — merged with existing values',
+                    description:
+                      'Partial state update. At least one of desired or reported values must be provided. Writes are shallow-merged with existing values. In production, reported would only be written by the device via a device-authenticated channel.',
+                    properties: {
+                      desired: {
+                        type: 'object',
+                        additionalProperties: true,
+                        description: 'Partial desired config - merged with existing desired state',
+                      },
+                      reported: {
+                        type: 'object',
+                        additionalProperties: true,
+                        description: 'Partial reported state - merged with existing reported state',
+                      },
+                    },
                   },
                 },
               },
@@ -193,15 +203,39 @@ export const spec: OpenAPIV3.Document = {
   },
   components: {
     schemas: {
+      DeviceState: {
+        type: 'object',
+        description:
+          'Shadow state model. desired = what the app commands, reported = what the device last confirmed, delta = computed diff (non-empty while the device has not yet applied the desired change).',
+        required: ['desired', 'reported', 'delta'],
+        properties: {
+          desired: {
+            type: 'object',
+            additionalProperties: true,
+            description: 'Target configuration set by the application',
+          },
+          reported: {
+            type: 'object',
+            additionalProperties: true,
+            description: 'Last-known state reported by the device',
+          },
+          delta: {
+            type: 'object',
+            additionalProperties: true,
+            description: 'Read-only diff - keys where desired differs from reported',
+            readOnly: true,
+          },
+        },
+      },
       Device: {
         allOf: [
           deviceBase,
           {
             type: 'object',
-            required: ['type', 'config'],
+            required: ['type', 'state'],
             properties: {
               type: { type: 'string', enum: ['light', 'thermostat', 'camera'] },
-              config: { type: 'object', description: 'Device-specific configuration' },
+              state: { $ref: '#/components/schemas/DeviceState' },
             },
           },
         ],

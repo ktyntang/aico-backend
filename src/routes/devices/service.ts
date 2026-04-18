@@ -1,8 +1,22 @@
-import { Device } from './model';
+import { Device, DeviceState } from './model';
 import { IDeviceRepository } from './repository';
 import { CreateDeviceInput, UpdateDeviceInput } from './schema';
 import { NotFoundError, ConflictError } from '@/middleware/errorHandler';
 import { logger } from '@/logger';
+
+function computeDelta(
+  desired: Record<string, unknown>,
+  reported: Record<string, unknown>,
+): Record<string, unknown> {
+  const delta: Record<string, unknown> = {};
+  const keys = new Set([...Object.keys(desired), ...Object.keys(reported)]);
+  for (const key of keys) {
+    if (JSON.stringify(desired[key]) !== JSON.stringify(reported[key])) {
+      delta[key] = desired[key];
+    }
+  }
+  return delta;
+}
 
 export class DeviceService {
   constructor(private repo: IDeviceRepository) {}
@@ -13,12 +27,19 @@ export class DeviceService {
     }
 
     const now = new Date().toISOString();
+    const initialConfig = input.config as Record<string, unknown>;
+    const state: DeviceState<typeof input.config> = {
+      desired: initialConfig,
+      reported: initialConfig,
+      delta: {},
+    };
+
     const device = {
       deviceId: input.deviceId,
       model: input.model,
       type: input.type,
-      status: 'online' as const,
-      config: input.config,
+      status: 'offline' as const,
+      state,
       createdAt: now,
       updatedAt: now,
     } as Device;
@@ -44,12 +65,29 @@ export class DeviceService {
 
   update(deviceId: string, patch: UpdateDeviceInput): Device {
     const existing = this.findById(deviceId);
+    const existingState = existing.state as unknown as {
+      desired: Record<string, unknown>;
+      reported: Record<string, unknown>;
+    };
+
+    const newDesired =
+      patch.state?.desired !== undefined
+        ? { ...existingState.desired, ...patch.state.desired }
+        : existingState.desired;
+
+    const newReported =
+      patch.state?.reported !== undefined
+        ? { ...existingState.reported, ...patch.state.reported }
+        : existingState.reported;
 
     const updated = {
       ...existing,
       ...(patch.status !== undefined && { status: patch.status }),
-      config:
-        patch.config !== undefined ? { ...existing.config, ...patch.config } : existing.config,
+      state: {
+        desired: newDesired,
+        reported: newReported,
+        delta: computeDelta(newDesired, newReported),
+      },
       updatedAt: new Date().toISOString(),
     } as Device;
 
@@ -61,17 +99,14 @@ export class DeviceService {
       log.info({ from: existing.status, to: patch.status }, 'Device status changed');
     }
 
-    if (patch.config !== undefined) {
-      const existingConfig = existing.config as unknown as Record<string, unknown>;
-      const changedKeys = Object.keys(patch.config).filter(
-        (k) => JSON.stringify(patch.config![k]) !== JSON.stringify(existingConfig[k]),
+    if (patch.state !== undefined) {
+      log.info(
+        {
+          desired: patch.state.desired !== undefined,
+          reported: patch.state.reported !== undefined,
+        },
+        'Device state updated',
       );
-      if (changedKeys.length > 0) {
-        const diff = Object.fromEntries(
-          changedKeys.map((k) => [k, { from: existingConfig[k], to: patch.config![k] }]),
-        );
-        log.info({ diff }, 'Device config changed');
-      }
     }
 
     return updated;

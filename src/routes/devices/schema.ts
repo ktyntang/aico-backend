@@ -45,9 +45,17 @@ export const CreateDeviceSchema = z.discriminatedUnion('type', [
 export const UpdateDeviceSchema = z
   .object({
     status: z.enum(['online', 'offline']).optional(),
-    config: z.record(z.unknown()).optional(),
+    state: z
+      .object({
+        desired: z.record(z.unknown()).optional(),
+        reported: z.record(z.unknown()).optional(),
+      })
+      .refine((s) => s.desired !== undefined || s.reported !== undefined, {
+        message: 'state must include at least one of desired or reported',
+      })
+      .optional(),
   })
-  .refine((data) => Object.keys(data).length > 0, {
+  .refine((data) => data.status !== undefined || data.state !== undefined, {
     message: 'At least one field must be provided',
   });
 
