@@ -90,7 +90,10 @@ In production, writes to `reported` would come from a separate device-authentica
 **Pagination and filtering.**
 Currently `GET /devices` returns all devices in one response, which could become unwieldy as the number of devices grows.
 
+**Validation improvements.** More complex validation logic could be added to the service layer or via custom Zod refinements based on the device type and business logic e.g. temperature range min/max etc.
+
 ## Assumptions
 
-- All config fields for the device type must be provided at registration. This becomes the initial `desired` state, with `delta` empty. In production, `reported` would fill in as the device comes online.
+- The client-supplied device ID at registration is unique, e.g. MAC address or serial number. If collisions are possible, server-generated UUIDs or a database-assigned ID could be assigned.
+- All config fields for the device type are provided at registration. This becomes the initial `desired` state, with `delta` empty. In production, `reported` would fill in as the device comes online.
 - Only one instance of the application should be running at a time. The file-backed store has no locking or coordination, so running multiple processes against the same file is unsafe.
